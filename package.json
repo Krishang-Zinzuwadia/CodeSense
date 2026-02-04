@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "cd codesense && next dev",
+    "build": "cd codesense && next build",
+    "start": "cd codesense && next start",
     "lint": "eslint ."
   },
   "dependencies": {
