@@ -49,8 +49,7 @@ export default async function CorePage({
                     Repository URL
                   </p>
                   <p className="text-[11px] text-slate-300/90">
-                    Paste any public GitHub repository URL. Submitting will
-                    refresh the core panel with a DeepWiki-powered summary.
+                    Paste GitHub URL for analysis
                   </p>
                 </div>
 
@@ -65,16 +64,30 @@ export default async function CorePage({
                   />
                   <button
                     type="submit"
-                    className="inline-flex w-full items-center justify-center rounded-xl border border-sky-400/40 bg-sky-500/15 px-3 py-1.5 text-[11px] font-medium tracking-wide text-sky-100 shadow-[0_0_25px_rgba(56,189,248,0.35)] backdrop-blur transition duration-300 hover:bg-sky-400/20 hover:shadow-[0_0_40px_rgba(56,189,248,0.8)] focus:outline-none focus:ring-2 focus:ring-sky-300/80 focus:ring-offset-2 focus:ring-offset-black/60"
+                    className="w-full text-[11px] font-medium tracking-wide flex items-center justify-center gap-1.5 hover:opacity-90"
+                    style={{
+                      background: 'radial-gradient(circle 80px at 80% -10%, #ffffff, #181b1b)',
+                      boxShadow: '0 0 20px #ffffff38',
+                      borderRadius: '16px',
+                      border: 'none',
+                      padding: '2px',
+                      color: '#fff',
+                    }}
                   >
-                    <span className="mr-1.5 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-slate-950/80" />
-                    Analyze Repository
+                    <span className="relative inline-block h-full w-full rounded-[14px] px-4 py-2.5 flex items-center justify-center gap-1.5"
+                      style={{
+                        background: 'radial-gradient(circle 80px at 80% -50%, #777777, #0f1111)',
+                        boxShadow: 'inset 0 0 20px #00e1ff1a',
+                      }}
+                    >
+                      <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-sky-300" />
+                      Analyze Repository
+                    </span>
                   </button>
                 </div>
 
                 <p className="mt-auto text-[10px] leading-relaxed text-slate-400">
-                  Paste any public GitHub repository URL to generate a concise
-                  overview and contribution ideas for that project.
+                  Get concise analysis and contribution ideas.
                 </p>
               </form>
             </div>
@@ -85,11 +98,7 @@ export default async function CorePage({
             <div className="flex h-full flex-col gap-4">
               <header className="space-y-1">
                 <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-300/80">
-                  Core Intelligence Surface
-                </p>
-                <p className="text-sm text-slate-300/90">
-                  This panel shows a structured summary of the repository you
-                  entered, plus the raw JSON returned from the DeepWiki client.
+                  Analysis Results
                 </p>
               </header>
 
@@ -166,8 +175,7 @@ export default async function CorePage({
               </div>
 
               <footer className="mt-3 text-[11px] text-slate-400">
-                Results are generated with Gemini and are meant to guide
-                high-impact, contributor-friendly work in the selected repo.
+                Powered by Gemini • AI-guided contributions
               </footer>
             </div>
           </section>

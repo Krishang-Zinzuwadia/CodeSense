@@ -1,6 +1,10 @@
 import { RepoSearchBar } from "@/components/RepoSearchBar"
 import { RepoCard } from "@/components/RepoCard"
-import { BookOpen, Zap, Code2 } from "lucide-react"
+import { BookOpen, Zap, Code2, Sparkles } from "lucide-react"
+import { TypingAnimation } from "@/components/ui/typing-animation"
+import { RainbowButton } from "@/components/ui/rainbow-button"
+import { InteractiveGridPattern } from "@/components/ui/interactive-grid-pattern"
+import Image from "next/image"
 
 const FEATURED_REPOS = [
   {
@@ -61,15 +65,30 @@ const FEATURED_REPOS = [
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen bg-background relative overflow-hidden">
+      {/* Interactive Grid Background */}
+      <div className="fixed inset-0 z-0 overflow-hidden">
+        <InteractiveGridPattern 
+          width={50} 
+          height={50} 
+          squares={[40, 40]} 
+          className="opacity-40"
+          squaresClassName="stroke-white/5"
+        />
+      </div>
+
       {/* Header */}
-      <header className="border-b border-border">
+      <header className="border-b border-border bg-background/80 backdrop-blur-sm relative z-10">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <BookOpen className="w-4 h-4 text-primary-foreground" />
-            </div>
-            <span className="font-semibold text-lg text-foreground">CodeSense</span>
+          <div className="flex items-center gap-3">
+            <Image 
+              src="/cs.svg" 
+              alt="CodeSense Logo" 
+              width={40} 
+              height={40}
+              className="rounded-xl shadow-lg shadow-cyan-500/25"
+            />
+            <span className="font-bold text-xl text-foreground tracking-tight">CodeSense</span>
           </div>
           <nav className="flex items-center gap-6 text-sm text-muted-foreground">
             <a href="#" className="hover:text-foreground transition-colors">Docs</a>
@@ -87,54 +106,61 @@ export default function HomePage() {
       </header>
 
       {/* Hero Section */}
-      <section className="py-24 md:py-32 relative overflow-hidden">
-        {/* Subtle grid background */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,var(--background)_70%)]" />
-        
+      <section className="py-24 md:py-32 relative z-10">
         <div className="container mx-auto px-4 relative">
           <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 text-balance">
-              Make your first open source contribution
+            {/* Typing Animation Title */}
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 text-balance min-h-[80px] md:min-h-[120px]">
+              <TypingAnimation 
+                text="Make your first open source contribution" 
+                duration={50}
+                className="bg-gradient-to-r from-white via-cyan-200 to-white bg-clip-text text-transparent"
+              />
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground mb-12 text-pretty max-w-2xl mx-auto">
-              Paste a repository URL and get AI powered analysis, feedback, and potential pull requests to be made.
+              Analyze any GitHub repository with AI-powered insights and contribution ideas.
             </p>
             
             <RepoSearchBar size="large" className="max-w-2xl mx-auto mb-8" />
             
-            <p className="text-sm text-muted-foreground">
-              Try or paste any <code className="px-2 py-1 bg-secondary rounded text-foreground">github</code> URL
+            <p className="text-sm text-muted-foreground mb-8">
+              Try or paste any <code className="px-2 py-1 bg-secondary rounded text-cyan-400">github</code> URL
             </p>
+
+            {/* Rainbow CTA Button */}
+            <RainbowButton>
+              <Sparkles className="w-4 h-4" />
+              Explore Repositories
+            </RainbowButton>
           </div>
         </div>
       </section>
 
       {/* Features */}
-      <section className="py-16 border-t border-border">
+      <section className="py-16 border-t border-border bg-background/60 backdrop-blur-sm relative z-10">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            <div className="flex flex-col items-center text-center">
-              <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center mb-4">
-                <BookOpen className="w-6 h-6 text-foreground" />
+            <div className="flex flex-col items-center text-center group">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                <BookOpen className="w-6 h-6 text-cyan-400" />
               </div>
               <h3 className="font-semibold text-foreground mb-2">Auto Documentation</h3>
               <p className="text-sm text-muted-foreground">
                 AI-generated documentation that explains the architecture and key concepts.
               </p>
             </div>
-            <div className="flex flex-col items-center text-center">
-              <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center mb-4">
-                <Zap className="w-6 h-6 text-foreground" />
+            <div className="flex flex-col items-center text-center group">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-yellow-500/20 to-orange-500/20 border border-yellow-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                <Zap className="w-6 h-6 text-yellow-400" />
               </div>
               <h3 className="font-semibold text-foreground mb-2">Instant PR Suggestion</h3>
               <p className="text-sm text-muted-foreground">
                 Get comprehensive insights about any issues or potential improvements to be made
               </p>
             </div>
-            <div className="flex flex-col items-center text-center">
-              <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center mb-4">
-                <Code2 className="w-6 h-6 text-foreground" />
+            <div className="flex flex-col items-center text-center group">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                <Code2 className="w-6 h-6 text-purple-400" />
               </div>
               <h3 className="font-semibold text-foreground mb-2">Smart Q&A</h3>
               <p className="text-sm text-muted-foreground">
@@ -146,7 +172,7 @@ export default function HomePage() {
       </section>
 
       {/* Featured Repos */}
-      <section className="py-16 border-t border-border">
+      <section className="py-16 border-t border-border relative z-10">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-4">
@@ -166,9 +192,9 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-8 border-t border-border">
+      <footer className="py-8 border-t border-border bg-background/80 backdrop-blur-sm relative z-10">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>Powered by DeepWiki MCP</p>
+          <p>Powered by DeepWiki MCP • Built with ❤️</p>
         </div>
       </footer>
     </main>

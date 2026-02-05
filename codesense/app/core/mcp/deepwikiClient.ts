@@ -9,11 +9,13 @@ export type DeepWikiAnalysis = {
   stub: true;
 };
 
+import { GeminiKeyManager } from "@/lib/geminiKeyManager";
+
 /**
- * Internal helper: pure stub implementation.
+ * Internal helper: fallback analysis when Gemini API fails
  *
- * This remains the default and fallback behavior even when HTTP mode is
- * configured, so the rest of the app always has a safe baseline.
+ * This provides a reasonable fallback analysis based on repo name/structure
+ * without calling the Gemini API.
  */
 async function analyzeWithStub(repoUrl: string): Promise<DeepWikiAnalysis> {
   const trimmedUrl = repoUrl.trim();
@@ -22,14 +24,21 @@ async function analyzeWithStub(repoUrl: string): Promise<DeepWikiAnalysis> {
     throw new Error("Repository URL is required for DeepWiki analysis.");
   }
 
+  // Extract repo name for better fallback analysis
+  const repoMatch = trimmedUrl.match(/github\.com\/([^/]+)\/([^/]+)/);
+  const repoName = repoMatch ? repoMatch[2] : "Repository";
+
   return {
     repoUrl: trimmedUrl,
     summary:
-      "This is a DeepWiki MCP stub response. It does not perform real repository analysis yet.",
+      `${repoName} is a GitHub repository. Analyze it by exploring its structure, reading the documentation, and examining the main source code files to understand its purpose and architecture.`,
     findings: [
-      "MCP wiring is in place and ready for real DeepWiki integration.",
-      "Replace this stub with an actual DeepWiki MCP client to analyze the repository structure, docs, and code.",
-      "Use this contract to drive higher-level agents (summaries, GSoC-style recommendations, and diagrams).",
+      "Check the README file to understand the project's main goals and setup instructions",
+      "Examine the package.json or similar configuration files to identify dependencies and project type",
+      "Review the main source directory to understand the codebase structure and key modules",
+      "Look for existing issues and pull requests to understand common contribution patterns",
+      "Identify the testing setup and contribution guidelines for making improvements",
+      "Check for architecture documentation or diagrams that explain the system design",
     ],
     stub: true,
   };
@@ -45,41 +54,86 @@ async function analyzeWithStub(repoUrl: string): Promise<DeepWikiAnalysis> {
 async function analyzeWithGemini(
   repoUrl: string
 ): Promise<DeepWikiAnalysis> {
-  const apiKey = process.env.GEMINI_API_KEY;
+  // Check if we have any API keys
+  if (
+    !process.env.GEMINI_API_KEY &&
+    !process.env.GEMINI_API_KEY_BACKUP_1 &&
+    !process.env.GEMINI_API_KEY_BACKUP_2
+  ) {
+    throw new Error("No Gemini API keys configured");
+  }
 
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is not set.");
+  // Extract owner/repo from URL
+  const urlParts = repoUrl.match(/github\.com\/([^/]+)\/([^/]+)/);
+  if (!urlParts) {
+    throw new Error("Invalid GitHub repository URL");
+  }
+
+  const [_, owner, repo] = urlParts;
+
+  // Try to fetch some actual code to provide context
+  let codeContext = "";
+  try {
+    // Fetch README
+    const readmeUrl = `https://api.github.com/repos/${owner}/${repo}/readme`;
+    const readmeRes = await fetch(readmeUrl);
+    if (readmeRes.ok) {
+      const readmeData = (await readmeRes.json()) as any;
+      const readmeContent = Buffer.from(readmeData.content || "", "base64").toString("utf-8");
+      codeContext += `README:\n${readmeContent.substring(0, 500)}\n\n`;
+    }
+
+    // Fetch package.json or similar
+    const pkgUrl = `https://api.github.com/repos/${owner}/${repo}/contents/package.json`;
+    const pkgRes = await fetch(pkgUrl);
+    if (pkgRes.ok) {
+      const pkgData = (await pkgRes.json()) as any;
+      const pkgContent = Buffer.from(pkgData.content || "", "base64").toString("utf-8");
+      codeContext += `package.json:\n${pkgContent.substring(0, 300)}\n\n`;
+    }
+  } catch {
+    // Ignore fetch errors, we'll work with what we have
   }
 
   const prompt = [
     "You are helping a developer understand a GitHub repository and plan contributions.",
     `Repository URL: ${repoUrl}`,
+    `Repository: ${owner}/${repo}`,
     "",
-    "Without cloning the repo, infer likely structure and contribution paths from the URL and common project patterns.",
-    "Return a short summary (2–3 sentences) and 3–5 concise bullet points of concrete contribution ideas.",
+    codeContext ? `Project Information:\n${codeContext}` : "",
+    "",
+    "Analyze this repository based on its structure and available information.",
+    "Return a comprehensive summary (2–4 sentences) explaining what this project does and its main purpose.",
+    "Then provide 4–6 concrete, specific contribution ideas or improvement areas.",
+    "Format: Start with the summary, then list ideas with bullet points starting with '-'",
   ].join("\n");
 
-  const response = await fetch(
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" +
-      encodeURIComponent(apiKey),
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [{ text: prompt }],
-          },
-        ],
-      }),
-    }
-  );
+  // Use key manager with fallback - it will automatically try all keys
+  const response = await GeminiKeyManager.callWithFallback(async (apiKey) => {
+    const res = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" +
+        encodeURIComponent(apiKey),
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [{ text: prompt }],
+            },
+          ],
+        }),
+      }
+    );
 
-  if (!response.ok) {
-    throw new Error(`Gemini HTTP error: ${response.status}`);
-  }
+    if (!res.ok) {
+      throw new Error(`Gemini HTTP error: ${res.status}`);
+    }
+
+    return res;
+  });
 
   const json = (await response.json()) as any;
   const text: string =
@@ -87,20 +141,38 @@ async function analyzeWithGemini(
     "Gemini did not return any content.";
 
   const lines = text.split("\n").map((line) => line.trim());
-  const nonEmpty = lines.filter(Boolean);
+  const nonEmpty = lines.filter((line) => line.length > 0);
 
+  // First non-empty line is the summary
   const summary = nonEmpty[0] ?? "No summary generated.";
-  const findings: string[] =
-    nonEmpty
-      .slice(1)
-      .filter((line) => line.length > 0)
-      .map((line) => line.replace(/^[\-*]\s*/, "")) || [];
+  
+  // Find lines that are actual findings (start with - or *, or are numbered)
+  const findings: string[] = [];
+  for (let i = 1; i < nonEmpty.length; i++) {
+    const line = nonEmpty[i];
+    // Skip lines that look like headers or instructions
+    if (
+      line.startsWith("-") ||
+      line.startsWith("*") ||
+      /^\d+\./.test(line) ||
+      line.startsWith("**")
+    ) {
+      // Clean the line and add it
+      const cleaned = line
+        .replace(/^[\-*\d.]\s*/, "") // Remove list markers and numbers
+        .replace(/^\*\*/, "") // Remove ** prefix
+        .replace(/\*\*:?\s*/, ""); // Remove ** suffix
+      if (cleaned.length > 0 && !cleaned.toLowerCase().includes("here are")) {
+        findings.push(cleaned);
+      }
+    }
+  }
 
   return {
     repoUrl,
     summary,
     findings,
-    stub: true, // keep field for now to avoid breaking the contract
+    stub: false,
   };
 }
 
