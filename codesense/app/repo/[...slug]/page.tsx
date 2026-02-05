@@ -1,25 +1,28 @@
 "use client"
 
 import React from "react"
-
 import { useParams } from "next/navigation"
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
-import { ArrowLeft, BookOpen, FolderTree, MessageSquare, Loader2, ExternalLink, RefreshCw } from "lucide-react"
+import Image from "next/image"
+import { ArrowLeft, BookOpen, FolderTree, MessageSquare, Loader2, ExternalLink, RefreshCw, GitBranch } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { RepoSearchBar } from "@/components/RepoSearchBar"
-
-interface WikiStructure {
-  title: string
-  pages: { id: string; title: string }[]
-}
+import { FileStructure } from "@/components/FileStructure"
+import { MermaidDiagram } from "@/components/MermaidDiagram"
 
 interface AnalysisState {
   status: "idle" | "loading" | "streaming" | "complete" | "error"
-  structure: WikiStructure | null
   analysis: string
   error: string | null
+}
+
+interface FileTreeNode {
+  name: string
+  type: "file" | "dir"
+  path: string
+  children?: FileTreeNode[]
 }
 
 export default function RepoPage() {
@@ -31,12 +34,17 @@ export default function RepoPage() {
 
   const [state, setState] = useState<AnalysisState>({
     status: "idle",
-    structure: null,
     analysis: "",
     error: null,
   })
 
-  const [activeTab, setActiveTab] = useState<"overview" | "structure" | "ask">("overview")
+  const [fileTree, setFileTree] = useState<FileTreeNode[]>([])
+  const [loadingFiles, setLoadingFiles] = useState(false)
+  const [diagram, setDiagram] = useState("")
+  const [loadingDiagram, setLoadingDiagram] = useState(false)
+  const [diagramType, setDiagramType] = useState<"architecture" | "flowchart" | "dependency">("architecture")
+
+  const [activeTab, setActiveTab] = useState<"overview" | "structure" | "diagram" | "ask">("overview")
   const [question, setQuestion] = useState("")
   const [isAskingQuestion, setIsAskingQuestion] = useState(false)
   const [questionAnswer, setQuestionAnswer] = useState("")
@@ -44,23 +52,9 @@ export default function RepoPage() {
   const fetchAnalysis = useCallback(async () => {
     if (!owner || !name) return
 
-    setState({ status: "loading", structure: null, analysis: "", error: null })
+    setState({ status: "loading", analysis: "", error: null })
 
     try {
-      // Fetch wiki structure first
-      const structureRes = await fetch("/api/deepwiki/structure", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ owner, name }),
-      })
-
-      if (!structureRes.ok) {
-        throw new Error("Failed to fetch repository structure")
-      }
-
-      const structureData = await structureRes.json()
-      setState((prev) => ({ ...prev, structure: structureData }))
-
       // Stream the analysis
       setState((prev) => ({ ...prev, status: "streaming" }))
       
@@ -99,9 +93,57 @@ export default function RepoPage() {
     }
   }, [owner, name])
 
+  const fetchFileStructure = useCallback(async () => {
+    if (!owner || !name) return
+
+    setLoadingFiles(true)
+
+    try {
+      const res = await fetch("/api/github/structure", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ owner, name }),
+      })
+
+      if (!res.ok) throw new Error("Failed to fetch file structure")
+
+      const data = await res.json()
+      setFileTree(data.fileTree || [])
+    } catch (error) {
+      console.error("Error fetching file structure:", error)
+    } finally {
+      setLoadingFiles(false)
+    }
+  }, [owner, name])
+
+  const fetchDiagram = useCallback(async (type: "architecture" | "flowchart" | "dependency" = diagramType) => {
+    if (!owner || !name) return
+
+    setLoadingDiagram(true)
+
+    try {
+      const res = await fetch("/api/github/generate-diagram", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ owner, name, diagramType: type }),
+      })
+
+      if (!res.ok) throw new Error("Failed to generate diagram")
+
+      const data = await res.json()
+      setDiagram(data.diagram || "")
+      setDiagramType(type)
+    } catch (error) {
+      console.error("Error fetching diagram:", error)
+    } finally {
+      setLoadingDiagram(false)
+    }
+  }, [owner, name, diagramType])
+
   useEffect(() => {
     fetchAnalysis()
-  }, [fetchAnalysis])
+    fetchFileStructure()
+  }, [fetchAnalysis, fetchFileStructure])
 
   const handleAskQuestion = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -158,9 +200,13 @@ export default function RepoPage() {
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <BookOpen className="w-4 h-4 text-primary-foreground" />
-            </div>
+            <Image 
+              src="/cs.svg" 
+              alt="CodeSense Logo" 
+              width={32} 
+              height={32}
+              className="rounded-lg"
+            />
             <span className="font-semibold text-foreground">CodeSense</span>
           </Link>
           
@@ -210,10 +256,11 @@ export default function RepoPage() {
       {/* Tabs */}
       <div className="border-b border-border">
         <div className="container mx-auto px-4">
-          <nav className="flex gap-1">
+          <nav className="flex gap-1 overflow-x-auto">
             {[
               { id: "overview", label: "Overview", icon: BookOpen },
-              { id: "structure", label: "Structure", icon: FolderTree },
+              { id: "structure", label: "Files", icon: FolderTree },
+              { id: "diagram", label: "Architecture", icon: GitBranch },
               { id: "ask", label: "Ask", icon: MessageSquare },
             ].map(({ id, label, icon: Icon }) => (
               <button
@@ -221,7 +268,7 @@ export default function RepoPage() {
                 key={id}
                 onClick={() => setActiveTab(id as typeof activeTab)}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors -mb-px",
+                  "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap",
                   activeTab === id
                     ? "text-foreground border-primary"
                     : "text-muted-foreground border-transparent hover:text-foreground hover:border-muted-foreground/50"
@@ -278,38 +325,56 @@ export default function RepoPage() {
           </div>
         )}
 
-        {activeTab === "structure" && state.structure && (
-          <div className="max-w-3xl mx-auto">
+        {activeTab === "structure" && (
+          <div className="max-w-4xl mx-auto">
             <div className="rounded-xl border border-border bg-card p-6 md:p-8">
               <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
                 <FolderTree className="w-5 h-5" />
-                Documentation Structure
+                Repository Files
               </h2>
-              <div className="space-y-2">
-                {state.structure.pages.map((page) => (
-                  <div
-                    key={page.id}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors"
-                  >
-                    <BookOpen className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-foreground">{page.title}</span>
-                  </div>
-                ))}
-                {state.structure.pages.length === 0 && (
-                  <p className="text-muted-foreground text-center py-8">
-                    No documentation structure available
-                  </p>
-                )}
-              </div>
+              {loadingFiles ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : fileTree.length > 0 ? (
+                <FileStructure tree={fileTree} />
+              ) : (
+                <p className="text-muted-foreground text-center py-8">No files found</p>
+              )}
             </div>
           </div>
         )}
 
-        {activeTab === "structure" && !state.structure && state.status !== "loading" && (
-          <div className="max-w-3xl mx-auto">
-            <div className="rounded-xl border border-border bg-card p-6 md:p-8 text-center">
-              <FolderTree className="w-8 h-8 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">Loading structure...</p>
+        {activeTab === "diagram" && (
+          <div className="max-w-4xl mx-auto space-y-4">
+            <div className="flex gap-2">
+              {(["architecture", "flowchart", "dependency"] as const).map((type) => (
+                <Button
+                  key={type}
+                  variant={diagramType === type ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => fetchDiagram(type)}
+                  disabled={loadingDiagram}
+                >
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                </Button>
+              ))}
+            </div>
+            <div className="rounded-xl border border-border bg-card p-6">
+              {loadingDiagram ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : diagram ? (
+                <MermaidDiagram diagramCode={diagram} title={`${diagramType.charAt(0).toUpperCase() + diagramType.slice(1)} Diagram`} />
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground mb-4">No diagram generated yet</p>
+                  <Button onClick={() => fetchDiagram()} variant="outline">
+                    Generate Diagram
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         )}

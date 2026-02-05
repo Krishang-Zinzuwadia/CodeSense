@@ -65,15 +65,39 @@ export function RepoSearchBar({ className, size = "default" }: RepoSearchBarProp
         <button
           type="submit"
           disabled={!isValidInput}
-          className={cn(
-            "flex items-center justify-center rounded-lg transition-all duration-200",
-            size === "large" ? "w-12 h-12 mr-2" : "w-10 h-10 mr-1",
+          className="flex items-center justify-center rounded-2xl transition-all duration-200 mr-2 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          style={
             isValidInput
-              ? "bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
-              : "bg-muted text-muted-foreground cursor-not-allowed"
-          )}
+              ? {
+                  width: size === "large" ? '48px' : '40px',
+                  height: size === "large" ? '48px' : '40px',
+                  background: 'radial-gradient(circle 80px at 80% -10%, #ffffff, #181b1b)',
+                  boxShadow: '0 0 20px #ffffff38',
+                  padding: '2px',
+                }
+              : {
+                  width: size === "large" ? '48px' : '40px',
+                  height: size === "large" ? '48px' : '40px',
+                  background: '#374151',
+                }
+          }
         >
-          <Search className={size === "large" ? "w-5 h-5" : "w-4 h-4"} />
+          <div
+            className="flex items-center justify-center w-full h-full rounded-[14px]"
+            style={
+              isValidInput
+                ? {
+                    background: 'radial-gradient(circle 80px at 80% -50%, #777777, #0f1111)',
+                    color: '#fff',
+                  }
+                : {
+                    background: 'transparent',
+                    color: '#9ca3af',
+                  }
+            }
+          >
+            <Search className={size === "large" ? "w-5 h-5" : "w-4 h-4"} />
+          </div>
         </button>
       </div>
     </form>
