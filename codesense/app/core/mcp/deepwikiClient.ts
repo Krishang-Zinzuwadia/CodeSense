@@ -6,7 +6,7 @@ export type DeepWikiAnalysis = {
    * Indicates this response was produced by the local stub implementation.
    * The real DeepWiki MCP integration should remove or replace this field.
    */
-  stub: true;
+  stub: boolean;
 };
 
 import { GeminiKeyManager } from "@/lib/geminiKeyManager";

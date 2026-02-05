@@ -1,5 +1,12 @@
 import { buildFileTree, getKeyFiles } from "@/lib/github";
 
+interface FileTreeNode {
+  name: string;
+  type: "file" | "dir";
+  path: string;
+  children?: FileTreeNode[];
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -12,8 +19,8 @@ export async function POST(request: Request) {
       );
     }
 
-    let fileTree = [];
-    let keyFiles = [];
+    let fileTree: FileTreeNode[] = [];
+    let keyFiles: string[] = [];
     let error = null;
 
     // Try to build the file tree, but don't fail if it errors

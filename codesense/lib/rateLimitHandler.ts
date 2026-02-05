@@ -39,7 +39,7 @@ export function parseRateLimitHeaders(headers: Headers): RateLimitInfo {
  * Check if rate limit is exceeded
  */
 export function isRateLimited(info: RateLimitInfo): boolean {
-  return info.remaining === 0 || (info.resetTime && Date.now() < info.resetTime);
+  return info.remaining === 0 || (info.resetTime !== null && Date.now() < info.resetTime);
 }
 
 /**
